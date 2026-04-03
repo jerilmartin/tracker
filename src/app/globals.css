@@ -59,3 +59,23 @@ body {
   padding-bottom: 0.5rem;
   margin-bottom: 1rem;
 }
+
+input:focus {
+  background: rgba(255, 255, 255, 0.04) !important;
+  box-shadow: 0 0 20px rgba(249, 115, 22, 0.1) !important;
+}
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: #05070a;
+}
+::-webkit-scrollbar-thumb {
+  background: #1f2937;
+  border-radius: 10px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #374151;
+}

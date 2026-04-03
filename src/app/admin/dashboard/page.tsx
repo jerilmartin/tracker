@@ -150,7 +150,7 @@ export default function AdminDashboard() {
           </div>
           <div className="flex items-center gap-4">
             <div className="hidden sm:block text-right mr-2">
-              <p className="text-sm font-medium text-white">{adminProfile?.full_name || 'Admin User'}</p>
+              <p className="text-sm font-medium text-white">{adminProfile?.full_name || 'Administrator'}</p>
             </div>
             <button
               id="refresh-btn"
@@ -230,7 +230,7 @@ export default function AdminDashboard() {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                   <div>
                     <label className="block text-sm font-medium text-slate-300 mb-2">Username *</label>
-                    <input name="username" type="text" required placeholder="e.g. johndoe" className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-slate-500 focus:outline-none focus:border-orange-500 focus:ring-1 focus:ring-orange-500 text-sm" />
+                    <input name="username" type="text" required placeholder="worker_id" className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-slate-500 focus:outline-none focus:border-orange-500 focus:ring-1 focus:ring-orange-500 text-sm" />
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-slate-300 mb-2">Password *</label>
