@@ -128,44 +128,42 @@ export default function AdminDashboard() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-slate-950 flex items-center justify-center">
-        <Loader2 className="w-8 h-8 text-blue-400 animate-spin" />
+      <div className="min-h-screen bg-[#05070a] flex items-center justify-center">
+        <Loader2 className="w-8 h-8 text-orange-500 animate-spin" />
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-slate-950 text-white">
+    <div className="min-h-screen bg-[#05070a] text-slate-200 font-sans">
       {/* Header */}
-      <header className="sticky top-0 z-20 bg-slate-950/95 backdrop-blur-md border-b border-white/10">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3 flex items-center justify-between">
+      <header className="sticky top-0 z-20 bg-[#05070a]/80 backdrop-blur-xl border-b border-white/5">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-lg bg-blue-600/20 border border-blue-500/30 flex items-center justify-center">
-              <MapPin className="w-4 h-4 text-blue-400" />
+            <div className="w-10 h-10 rounded-xl bg-orange-500/10 border border-orange-500/20 flex items-center justify-center">
+              <MapPin className="w-5 h-5 text-orange-500" />
             </div>
             <div>
-              <span className="font-bold text-white">FieldTracker</span>
-              <span className="ml-2 text-xs bg-blue-600/20 border border-blue-500/30 text-blue-400 px-2 py-0.5 rounded-full">Admin</span>
+              <h1 className="text-xl font-bold text-white tracking-tight">TravelTrack</h1>
+              <p className="text-slate-400 text-xs">Admin Dashboard</p>
             </div>
           </div>
-          <div className="flex items-center gap-2">
-            <div className="hidden sm:flex items-center gap-2 text-slate-300 text-sm mr-2">
-              <Shield className="w-4 h-4 text-blue-400" />
-              {adminProfile?.full_name || 'Administrator'}
+          <div className="flex items-center gap-4">
+            <div className="hidden sm:block text-right mr-2">
+              <p className="text-sm font-medium text-white">{adminProfile?.full_name || 'Admin User'}</p>
             </div>
             <button
               id="refresh-btn"
               onClick={handleRefresh}
               disabled={refreshing}
-              className="p-2 rounded-lg text-slate-400 hover:text-white hover:bg-white/5 transition-all"
-              title="Refresh data"
+              className="p-2.5 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 text-slate-300 transition-colors"
             >
               <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} />
             </button>
             <button
               id="admin-logout-btn"
               onClick={handleLogout}
-              className="p-2 rounded-lg text-slate-400 hover:text-white hover:bg-white/5 transition-all"
+              className="p-2.5 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 text-slate-300 hover:text-red-400 transition-colors"
             >
               <LogOut className="w-4 h-4" />
             </button>
@@ -173,41 +171,27 @@ export default function AdminDashboard() {
         </div>
       </header>
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 py-6 space-y-6">
-        {/* Stats row */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-          <StatCard icon={<Users className="w-5 h-5 text-blue-400" />} label="Total Workers" value={users.length} color="blue" />
-          <StatCard icon={<Activity className="w-5 h-5 text-green-400" />} label="Active Now" value={activeUsers.length} color="green" pulse={activeUsers.length > 0} />
-          <StatCard icon={<Clock className="w-5 h-5 text-amber-400" />} label="Total Sessions" value={totalSessions} color="amber" />
-          <StatCard icon={<Camera className="w-5 h-5 text-purple-400" />} label="Photo Check-ins" value={totalCheckins} color="purple" />
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 py-8 space-y-8">
+        {/* Stats Row */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          <StatCard label="Total Workers" value={users.length} icon={<Users size={18} />} />
+          <StatCard label="Active Now" value={activeUsers.length} icon={<Activity size={18} />} active={activeUsers.length > 0} />
+          <StatCard label="Total Sessions" value={totalSessions} icon={<Clock size={18} />} />
+          <StatCard label="Total Photos" value={totalCheckins} icon={<Camera size={18} />} />
         </div>
 
-        {/* Real-time status bar */}
-        {activeUsers.length > 0 && (
-          <div className="flex items-center gap-3 bg-green-500/10 border border-green-500/30 rounded-xl px-4 py-3">
-            <span className="status-dot active" />
-            <p className="text-green-400 text-sm font-medium">
-              {activeUsers.length} worker{activeUsers.length !== 1 ? 's' : ''} currently active in the field
-            </p>
-            <span className="ml-auto text-xs text-green-500/70">Live dashboard • auto-updates</span>
-          </div>
-        )}
-
-        {/* Tabs */}
-        <div className="flex gap-1 bg-slate-900 border border-white/10 rounded-xl p-1">
-          {([
-            { key: 'active', label: `Active (${activeUsers.length})` },
-            { key: 'all', label: `All Workers (${users.length})` },
-            { key: 'workers', label: `Manage Workers` },
-          ] as { key: TabType; label: string }[]).map(tab => (
+        {/* Tab Controls */}
+        <div className="flex gap-2 border-b border-white/5 pb-px">
+          {[
+            { key: 'active', label: 'Active Workers' },
+            { key: 'all', label: 'All Workers' },
+            { key: 'workers', label: 'Manage Workers' },
+          ].map(tab => (
             <button
               key={tab.key}
-              id={`tab-${tab.key}`}
-              onClick={() => setActiveTab(tab.key)}
-              className={`flex-1 py-2 px-3 rounded-lg text-sm font-medium transition-all duration-200 ${
-                activeTab === tab.key
-                  ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/20'
-                  : 'text-slate-400 hover:text-white'
+              onClick={() => setActiveTab(tab.key as TabType)}
+              className={`px-5 py-3 text-sm font-medium transition-all rounded-t-lg ${
+                activeTab === tab.key ? 'text-orange-500 bg-orange-500/10 border-b-2 border-orange-500' : 'text-slate-400 hover:text-white hover:bg-white/5'
               }`}
             >
               {tab.label}
@@ -215,95 +199,98 @@ export default function AdminDashboard() {
           ))}
         </div>
 
-        {/* Users list */}
-        <div className="space-y-3">
+        {/* Content Area */}
+        <div className="space-y-4">
           {activeTab === 'workers' ? (
-            <div className="bg-slate-900 border border-white/10 rounded-2xl p-6">
-              <div className="flex items-center gap-3 mb-6">
-                <div className="w-10 h-10 rounded-xl bg-blue-600/20 border border-blue-500/30 flex items-center justify-center">
-                  <UserPlus className="w-5 h-5 text-blue-400" />
+            <div className="saas-card p-8 max-w-2xl mx-auto">
+              <div className="flex items-center gap-3 mb-8">
+                <div className="w-10 h-10 border border-white/10 rounded-xl flex items-center justify-center bg-white/5">
+                  <UserPlus className="w-5 h-5 text-orange-400" />
                 </div>
                 <div>
-                  <h3 className="text-white font-semibold">Create New Worker</h3>
-                  <p className="text-slate-400 text-sm">Add a new field worker account</p>
+                  <h3 className="text-lg font-semibold text-white">Create Worker Account</h3>
+                  <p className="text-slate-400 text-sm">Add a new user to the field team</p>
                 </div>
               </div>
-
+              
               {actionError && (
-                <div className="flex items-start gap-3 bg-red-500/10 border border-red-500/30 rounded-xl px-4 py-3 mb-5 text-red-400 text-sm">
-                  <AlertCircle className="w-4 h-4 mt-0.5 shrink-0" />
+                <div className="bg-red-500/10 border border-red-500/20 rounded-xl p-4 mb-6 text-red-400 text-sm flex gap-2">
+                  <AlertCircle className="w-5 h-5 shrink-0" />
                   {actionError}
                 </div>
               )}
               {actionSuccess && (
-                <div className="flex items-start gap-3 bg-green-500/10 border border-green-500/30 rounded-xl px-4 py-3 mb-5 text-green-400 text-sm">
-                  <CheckCircle className="w-4 h-4 mt-0.5 shrink-0" />
+                <div className="bg-green-500/10 border border-green-500/20 rounded-xl p-4 mb-6 text-green-400 text-sm flex gap-2">
+                  <CheckCircle className="w-5 h-5 shrink-0" />
                   {actionSuccess}
                 </div>
               )}
 
-              <form id="create-worker-form" action={handleCreateWorker} className="space-y-4">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <form id="create-worker-form" action={handleCreateWorker} className="space-y-6">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                   <div>
-                    <label className="block text-sm font-medium text-slate-300 mb-1.5">Username *</label>
-                    <input name="username" type="text" required placeholder="johndoe" className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 text-sm" />
+                    <label className="block text-sm font-medium text-slate-300 mb-2">Username *</label>
+                    <input name="username" type="text" required placeholder="e.g. johndoe" className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-slate-500 focus:outline-none focus:border-orange-500 focus:ring-1 focus:ring-orange-500 text-sm" />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-slate-300 mb-1.5">Password *</label>
-                    <input name="password" type="text" required placeholder="Min. 6 characters" className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 text-sm" />
+                    <label className="block text-sm font-medium text-slate-300 mb-2">Password *</label>
+                    <input name="password" type="text" required placeholder="Min 6 characters" className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-slate-500 focus:outline-none focus:border-orange-500 focus:ring-1 focus:ring-orange-500 text-sm" />
                   </div>
                   <div className="sm:col-span-2">
-                    <label className="block text-sm font-medium text-slate-300 mb-1.5">Phone Number (Optional)</label>
-                    <input name="phone" type="tel" placeholder="+1 234 567 8900" className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 text-sm" />
+                    <label className="block text-sm font-medium text-slate-300 mb-2">Phone Number (Optional)</label>
+                    <input name="phone" type="tel" placeholder="+1234567890" className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-slate-500 focus:outline-none focus:border-orange-500 focus:ring-1 focus:ring-orange-500 text-sm" />
                   </div>
                   <div className="sm:col-span-2">
-                    <label className="block text-sm font-medium text-slate-300 mb-1.5">Assigned Area</label>
-                    <input name="assignedArea" type="text" placeholder="Village / Zone Map" className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 text-sm" />
+                    <label className="block text-sm font-medium text-slate-300 mb-2">Assigned Area</label>
+                    <input name="assignedArea" type="text" placeholder="Village / Zone / District" className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-slate-500 focus:outline-none focus:border-orange-500 focus:ring-1 focus:ring-orange-500 text-sm" />
                   </div>
                 </div>
 
                 <div className="pt-2">
-                  <button type="submit" disabled={actionLoading} className="w-full sm:w-auto px-6 py-3 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-medium transition-all shadow-lg shadow-blue-600/30 disabled:opacity-60 disabled:cursor-not-allowed text-sm flex items-center justify-center gap-2">
-                    {actionLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <UserPlus className="w-4 h-4" />}
-                    {actionLoading ? 'Creating Worker...' : 'Create Worker Account'}
+                  <button type="submit" disabled={actionLoading} className="btn-primary px-8 py-3 w-full sm:w-auto flex items-center justify-center gap-2">
+                    {actionLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <UserPlus size={18} />}
+                    {actionLoading ? 'Creating User...' : 'Create Worker'}
                   </button>
                 </div>
               </form>
             </div>
           ) : displayedUsers.length === 0 ? (
-            <div className="text-center py-16 text-slate-500">
-              {activeTab === 'active'
-                ? 'No workers are currently active in the field.'
-                : 'No workers found. Go to Manage Workers to add some.'}
+            <div className="text-center py-24 saas-card">
+              <Users className="w-12 h-12 text-slate-600 mx-auto mb-4" />
+              <p className="text-slate-400 text-sm font-medium">
+                No workers currently active.
+              </p>
             </div>
           ) : (
-            displayedUsers.map(user => (
-              <UserCard
-                key={user.id}
-                user={user}
-                isExpanded={expandedUser === user.id}
-                onToggle={() => setExpandedUser(expandedUser === user.id ? null : user.id)}
-                onPhotoClick={setSelectedPhoto}
-              />
-            ))
+            <div className="grid grid-cols-1 gap-4">
+              {displayedUsers.map(user => (
+                <UserCard
+                  key={user.id}
+                  user={user}
+                  isExpanded={expandedUser === user.id}
+                  onToggle={() => setExpandedUser(expandedUser === user.id ? null : user.id)}
+                  onPhotoClick={setSelectedPhoto}
+                />
+              ))}
+            </div>
           )}
         </div>
       </main>
 
-      {/* Photo lightbox */}
+      {/* Photo Lightbox */}
       {selectedPhoto && (
         <div
-          className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center p-4"
+          className="fixed inset-0 z-50 bg-[#05070a]/90 backdrop-blur-sm flex items-center justify-center p-4"
           onClick={() => setSelectedPhoto(null)}
         >
-          <div className="relative max-w-2xl w-full" onClick={e => e.stopPropagation()}>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
+          <div className="relative max-w-4xl w-full" onClick={e => e.stopPropagation()}>
             <img src={selectedPhoto} alt="Field checkin" className="w-full rounded-2xl shadow-2xl" />
             <button
-              id="close-photo-btn"
               onClick={() => setSelectedPhoto(null)}
-              className="absolute top-3 right-3 w-8 h-8 bg-black/50 rounded-full flex items-center justify-center text-white hover:bg-black/80 transition-all text-sm"
-            >✕</button>
+              className="absolute -top-12 right-0 text-white hover:text-orange-500 text-sm font-medium flex items-center gap-2 bg-white/10 hover:bg-white/20 px-4 py-2 rounded-xl transition-all"
+            >
+              Close <span className="text-lg leading-none">✕</span>
+            </button>
           </div>
         </div>
       )}
@@ -311,26 +298,17 @@ export default function AdminDashboard() {
   )
 }
 
-function StatCard({ icon, label, value, color, pulse }: {
-  icon: React.ReactNode
-  label: string
-  value: number
-  color: 'blue' | 'green' | 'amber' | 'purple'
-  pulse?: boolean
-}) {
-  const colorMap = {
-    blue: 'bg-blue-600/10 border-blue-500/20',
-    green: 'bg-green-600/10 border-green-500/20',
-    amber: 'bg-amber-600/10 border-amber-500/20',
-    purple: 'bg-purple-600/10 border-purple-500/20',
-  }
+function StatCard({ label, value, icon, active }: { label: string, value: number, icon: React.ReactNode, active?: boolean }) {
   return (
-    <div className={`${colorMap[color]} border rounded-xl p-4 ${pulse ? 'pulse-active' : ''}`}>
-      <div className="flex items-center justify-between mb-2">
-        {icon}
+    <div className="saas-card p-6">
+      <div className="flex items-center justify-between mb-4 text-slate-400">
+        <span className="font-medium text-sm">{label}</span>
+        <div className="bg-white/5 p-2 rounded-lg">{icon}</div>
       </div>
-      <p className="text-2xl font-bold text-white">{value}</p>
-      <p className="text-xs text-slate-400 mt-0.5">{label}</p>
+      <div className="flex items-center gap-3">
+        <p className="text-3xl font-bold text-white">{value}</p>
+        {active && <span className="status-dot active ml-auto" />}
+      </div>
     </div>
   )
 }
@@ -344,182 +322,149 @@ function UserCard({ user, isExpanded, onToggle, onPhotoClick }: {
   const activeSession = user.sessions.find(s => s.status === 'active')
   const allCheckins = user.sessions.flatMap(s => s.photo_checkins)
   const latestSession = user.sessions[0]
-
-  const sessionDuration = activeSession
-    ? differenceInMinutes(new Date(), new Date(activeSession.start_time))
-    : null
+  const sessionDuration = activeSession ? differenceInMinutes(new Date(), new Date(activeSession.start_time)) : null
 
   return (
-    <div className="bg-slate-900 border border-white/10 rounded-2xl overflow-hidden">
-      {/* Card header — always visible */}
+    <div className={`saas-card transition-all duration-200 ${isExpanded ? 'border-orange-500/30 ring-1 ring-orange-500/30' : 'hover:border-white/20'}`}>
       <button
-        id={`user-card-${user.id}`}
         onClick={onToggle}
-        className="w-full text-left px-5 py-4 flex items-center gap-4 hover:bg-white/2 transition-colors"
+        className="w-full text-left p-5 flex items-center gap-5"
       >
-        {/* Avatar */}
-        <div className="relative shrink-0">
-          <div className="w-11 h-11 rounded-xl bg-blue-600/20 border border-blue-500/30 flex items-center justify-center text-blue-400 font-bold text-sm">
-            {user.full_name.charAt(0).toUpperCase()}
-          </div>
-          {activeSession && (
-            <span className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 bg-green-500 border-2 border-slate-900 rounded-full" />
-          )}
+        <div className={`w-12 h-12 rounded-full flex items-center justify-center font-bold text-lg ${activeSession ? 'bg-orange-500/20 text-orange-500 border border-orange-500/30' : 'bg-white/5 text-slate-300 border border-white/10'}`}>
+          {user.full_name.substring(0, 1).toUpperCase()}
         </div>
 
-        {/* Info */}
         <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 flex-wrap">
-            <p className="font-semibold text-white text-sm">{user.full_name}</p>
+          <div className="flex items-center gap-3">
+            <p className="font-semibold text-white text-base">{user.full_name}</p>
             {activeSession && (
-              <span className="text-xs bg-green-500/20 border border-green-500/30 text-green-400 px-2 py-0.5 rounded-full">
+              <span className="text-xs font-semibold text-green-400 bg-green-500/10 px-2 py-0.5 rounded-full border border-green-500/20">
                 ACTIVE
               </span>
             )}
           </div>
-          <div className="flex items-center gap-3 mt-0.5 text-xs text-slate-400">
-            {user.assigned_area && (
-              <span className="flex items-center gap-1">
-                <Navigation className="w-3 h-3" />
-                {user.assigned_area}
-              </span>
-            )}
-            {user.phone && (
-              <span className="flex items-center gap-1">
-                <Phone className="w-3 h-3" />
-                {user.phone}
-              </span>
-            )}
+          <div className="flex items-center gap-4 mt-1 text-sm text-slate-400">
+            {user.assigned_area && <span className="flex items-center gap-1.5"><Navigation size={14} /> {user.assigned_area}</span>}
+            {user.phone && <span className="flex items-center gap-1.5"><Phone size={14} /> {user.phone}</span>}
           </div>
         </div>
 
-        {/* Right side stats */}
-        <div className="text-right shrink-0 hidden sm:block">
+        <div className="hidden sm:flex flex-col items-end shrink-0">
           {activeSession ? (
             <>
-              <p className="text-green-400 font-semibold text-sm">
-                {sessionDuration !== null ? `${Math.floor(sessionDuration / 60)}h ${sessionDuration % 60}m` : '—'}
+              <p className="text-orange-400 font-semibold text-sm">
+                {sessionDuration !== null ? `${Math.floor(sessionDuration / 60)}h ${sessionDuration % 60}m` : '0h 0m'}
               </p>
-              <p className="text-xs text-slate-500">active</p>
-            </>
-          ) : latestSession ? (
-            <>
-              <p className="text-slate-300 text-sm">{user.sessions.length} session{user.sessions.length !== 1 ? 's' : ''}</p>
-              <p className="text-xs text-slate-500">{formatDistanceToNow(new Date(latestSession.start_time), { addSuffix: true })}</p>
+              <p className="text-xs text-slate-500">duration</p>
             </>
           ) : (
-            <p className="text-xs text-slate-500">No sessions</p>
+            <>
+              <p className="text-slate-300 text-sm font-medium">{user.sessions.length} sessions</p>
+              <p className="text-xs text-slate-500">total</p>
+            </>
           )}
         </div>
-
-        {/* Expand toggle */}
-        <div className="text-slate-500 shrink-0 ml-2">
-          {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+        
+        <div className="ml-4 text-slate-500">
+          {isExpanded ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
         </div>
       </button>
 
-      {/* Expanded content */}
       {isExpanded && (
-        <div className="border-t border-white/10 px-5 py-4 space-y-4">
-          {/* Active session details */}
-          {activeSession && (
-            <div className="bg-green-500/5 border border-green-500/20 rounded-xl p-4">
-              <p className="text-xs font-semibold text-green-400 uppercase tracking-wider mb-3">Current Session</p>
-              <div className="grid grid-cols-2 gap-3 text-sm">
-                <div>
-                  <p className="text-slate-500 text-xs mb-0.5">Started</p>
-                  <p className="text-white font-medium">{format(new Date(activeSession.start_time), 'hh:mm a')}</p>
-                </div>
-                <div>
-                  <p className="text-slate-500 text-xs mb-0.5">Duration</p>
-                  <p className="text-white font-medium">
-                    {sessionDuration !== null ? `${Math.floor(sessionDuration / 60)}h ${sessionDuration % 60}m` : '—'}
-                  </p>
-                </div>
-                {activeSession.start_location && (
-                  <div className="col-span-2">
-                    <p className="text-slate-500 text-xs mb-0.5">Start Location</p>
-                    <a
-                      href={`https://maps.google.com/?q=${activeSession.start_location.lat},${activeSession.start_location.lng}`}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="inline-flex items-center gap-1.5 text-blue-400 hover:text-blue-300 text-xs transition-colors"
-                    >
-                      <MapPin className="w-3.5 h-3.5" />
-                      {activeSession.start_location.lat.toFixed(5)}, {activeSession.start_location.lng.toFixed(5)}
-                      <span className="text-slate-500">→ Open in Maps</span>
-                    </a>
+        <div className="p-6 border-t border-white/5 bg-white/[0.02] rounded-b-2xl space-y-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+            {/* Current/Latest Data */}
+            <div className="space-y-4">
+              <h4 className="section-label">Current Session</h4>
+              {activeSession ? (
+                <div className="bg-white/5 border border-white/10 rounded-xl p-4 space-y-3">
+                  <div className="flex justify-between items-end">
+                    <span className="text-sm text-slate-400">Started</span>
+                    <span className="text-sm font-medium text-white">{format(new Date(activeSession.start_time), 'hh:mm a')}</span>
                   </div>
-                )}
-              </div>
-            </div>
-          )}
-
-          {/* Photo checkins */}
-          {allCheckins.length > 0 ? (
-            <div>
-              <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3 flex items-center gap-1.5">
-                <Camera className="w-3.5 h-3.5" />
-                Photo Check-ins ({allCheckins.length})
-              </p>
-              <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
-                {allCheckins.map(c => (
-                  <button
-                    key={c.id}
-                    id={`photo-${c.id}`}
-                    onClick={() => onPhotoClick(c.photo_url)}
-                    className="group relative aspect-square rounded-xl overflow-hidden border border-white/10 hover:border-blue-500/50 transition-all"
-                  >
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={c.photo_url} alt="checkin" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200" />
-                    <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent p-1.5">
-                      <p className="text-white text-[10px]">{format(new Date(c.captured_at), 'HH:mm')}</p>
+                  {activeSession.start_location && (
+                    <div className="flex justify-between items-end border-t border-white/5 pt-3">
+                      <span className="text-sm text-slate-400">Start Location</span>
+                      <a
+                        href={`https://maps.google.com/?q=${activeSession.start_location.lat},${activeSession.start_location.lng}`}
+                        target="_blank" rel="noreferrer"
+                        className="text-sm text-blue-400 hover:text-blue-300 flex items-center gap-1"
+                      >
+                        <MapPin className="w-3.5 h-3.5" />
+                        View on map →
+                      </a>
                     </div>
-                  </button>
-                ))}
-              </div>
+                  )}
+                </div>
+              ) : latestSession ? (
+                <p className="text-slate-400 text-sm">
+                  Last active: {formatDistanceToNow(new Date(latestSession.start_time), { addSuffix: true })}
+                </p>
+              ) : (
+                <p className="text-slate-500 text-sm">No sessions found</p>
+              )}
             </div>
-          ) : (
-            <div className="flex items-center gap-2 text-slate-500 text-sm py-2">
-              <ImageIcon className="w-4 h-4" />
-              No photo check-ins yet
-            </div>
-          )}
 
-          {/* Session history */}
+            {/* Photos */}
+            <div className="space-y-4">
+              <h4 className="section-label flex items-center gap-2">
+                <Camera className="w-4 h-4" />
+                Photos ({allCheckins.length})
+              </h4>
+              {allCheckins.length > 0 ? (
+                <div className="grid grid-cols-4 sm:grid-cols-5 gap-3">
+                  {allCheckins.map(c => (
+                    <div key={c.id} className="relative group">
+                      <button
+                        onClick={() => onPhotoClick(c.photo_url)}
+                        className="aspect-square w-full rounded-lg  overflow-hidden hover:ring-2 hover:ring-orange-500 transition-all"
+                      >
+                        <img src={c.photo_url} alt="Field data" className="w-full h-full object-cover" />
+                      </button>
+                      <span className="absolute bottom-1 right-1 text-xs text-white bg-black/60 px-1.5 py-0.5 rounded opacity-0 group-hover:opacity-100 transition-opacity">
+                        {format(new Date(c.captured_at), 'hh:mm')}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-slate-500 text-sm">No photos uploaded yet</p>
+              )}
+            </div>
+          </div>
+
+          {/* Detailed History Mapping */}
           {user.sessions.length > 0 && (
-            <div>
-              <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3 flex items-center gap-1.5">
-                <Clock className="w-3.5 h-3.5" />
+            <div className="space-y-4">
+              <h4 className="section-label flex items-center gap-2">
+                <Clock className="w-4 h-4" />
                 Session History
-              </p>
+              </h4>
               <div className="space-y-2">
-                {user.sessions.map(session => (
-                  <div key={session.id} className="flex items-center justify-between px-3 py-2.5 rounded-xl bg-slate-800/50 border border-white/5 text-sm">
+                {user.sessions.slice(0, 5).map(session => (
+                  <div key={session.id} className="flex items-center justify-between p-3 rounded-xl bg-white/5 border border-white/5 hover:bg-white/10 transition-colors">
                     <div className="flex items-center gap-3">
-                      {session.status === 'active'
-                        ? <CheckCircle className="w-3.5 h-3.5 text-green-400" />
-                        : <AlertCircle className="w-3.5 h-3.5 text-slate-500" />
-                      }
+                      {session.status === 'active' ? (
+                        <div className="w-8 h-8 rounded-full bg-green-500/20 flex items-center justify-center">
+                          <span className="w-2.5 h-2.5 rounded-full bg-green-500" />
+                        </div>
+                      ) : (
+                        <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center">
+                          <CheckCircle className="w-4 h-4 text-slate-400" />
+                        </div>
+                      )}
                       <div>
-                        <p className="text-white text-xs font-medium">{format(new Date(session.start_time), 'dd MMM yyyy')}</p>
-                        <p className="text-slate-500 text-xs">
-                          {format(new Date(session.start_time), 'hh:mm a')}
-                          {session.end_time ? ` → ${format(new Date(session.end_time), 'hh:mm a')}` : ' → ongoing'}
+                        <p className="text-white text-sm font-medium">{format(new Date(session.start_time), 'MMM dd, yyyy')}</p>
+                        <p className="text-slate-400 text-xs mt-0.5">
+                          {format(new Date(session.start_time), 'hh:mm a')} → {session.end_time ? format(new Date(session.end_time), 'hh:mm a') : 'Ongoing'}
                         </p>
                       </div>
                     </div>
                     <div className="text-right">
-                      <span className={`text-xs px-2 py-0.5 rounded-full border ${
-                        session.status === 'active'
-                          ? 'bg-green-500/10 border-green-500/30 text-green-400'
-                          : 'bg-slate-700 border-white/10 text-slate-400'
-                      }`}>
-                        {session.status === 'active' ? 'Active' : 'Ended'}
-                      </span>
-                      <p className="text-slate-500 text-xs mt-1">
-                        {session.photo_checkins.length} photo{session.photo_checkins.length !== 1 ? 's' : ''}
+                      <p className="text-sm font-medium text-slate-300">
+                        {session.photo_checkins.length} photos
                       </p>
+                      {session.status === 'active' && <span className="text-xs text-green-400">Active now</span>}
                     </div>
                   </div>
                 ))}

@@ -230,35 +230,34 @@ export default function UserDashboard() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-slate-950 flex items-center justify-center">
-        <Loader2 className="w-8 h-8 text-blue-400 animate-spin" />
+      <div className="min-h-screen bg-[#05070a] flex items-center justify-center">
+        <Loader2 className="w-8 h-8 text-orange-500 animate-spin" />
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-slate-950 text-white">
+    <div className="min-h-screen bg-[#05070a] text-slate-200 font-sans">
       {/* Header */}
-      <header className="sticky top-0 z-20 bg-slate-950/90 backdrop-blur-md border-b border-white/10">
-        <div className="max-w-lg mx-auto px-4 py-3 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <MapPin className="w-5 h-5 text-blue-400" />
-            <span className="font-bold text-white">FieldTracker</span>
+      <header className="sticky top-0 z-20 bg-[#05070a]/80 backdrop-blur-xl border-b border-white/5">
+        <div className="max-w-lg mx-auto px-4 py-4 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-orange-500/10 border border-orange-500/20 flex items-center justify-center">
+              <MapPin className="w-5 h-5 text-orange-500" />
+            </div>
+            <div>
+              <h1 className="text-lg font-bold text-white tracking-tight">TravelTrack</h1>
+            </div>
           </div>
           <div className="flex items-center gap-3">
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-full bg-blue-600/20 border border-blue-500/30 flex items-center justify-center">
-                <User className="w-4 h-4 text-blue-400" />
-              </div>
-              <div className="hidden sm:block">
-                <p className="text-xs font-medium text-white leading-none">{profile?.full_name}</p>
-                <p className="text-xs text-slate-400 mt-0.5">{profile?.assigned_area || 'No area assigned'}</p>
-              </div>
+            <div className="hidden sm:block text-right mr-1">
+              <p className="text-sm font-medium text-white">{profile?.full_name}</p>
+              <p className="text-xs text-slate-400">{profile?.assigned_area || 'No area assigned'}</p>
             </div>
             <button
               id="logout-btn"
               onClick={handleLogout}
-              className="p-2 rounded-lg text-slate-400 hover:text-white hover:bg-white/5 transition-all"
+              className="p-2.5 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 text-slate-300 hover:text-red-400 transition-colors"
             >
               <LogOut className="w-4 h-4" />
             </button>
@@ -266,134 +265,124 @@ export default function UserDashboard() {
         </div>
       </header>
 
-      <main className="max-w-lg mx-auto px-4 py-6 space-y-5">
+      <main className="max-w-lg mx-auto px-4 py-8 space-y-6">
         {/* Alerts */}
         {error && (
-          <div className="flex items-start gap-3 bg-red-500/10 border border-red-500/30 rounded-xl px-4 py-3 text-red-400 text-sm">
-            <AlertCircle className="w-4 h-4 mt-0.5 shrink-0" />
+          <div className="bg-red-500/10 border border-red-500/20 rounded-xl p-4 text-red-400 text-sm flex gap-2">
+            <AlertCircle className="w-5 h-5 shrink-0" />
             {error}
           </div>
         )}
         {success && (
-          <div className="flex items-start gap-3 bg-green-500/10 border border-green-500/30 rounded-xl px-4 py-3 text-green-400 text-sm">
-            <CheckCircle className="w-4 h-4 mt-0.5 shrink-0" />
+          <div className="bg-green-500/10 border border-green-500/20 rounded-xl p-4 text-green-400 text-sm flex gap-2">
+            <CheckCircle className="w-5 h-5 shrink-0" />
             {success}
           </div>
         )}
 
         {/* Active Session Card */}
         {activeSession ? (
-          <div className="bg-gradient-to-br from-green-600/20 to-emerald-600/10 border border-green-500/30 rounded-2xl p-5">
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-2">
-                <span className="status-dot active" />
-                <span className="text-green-400 font-semibold text-sm">Session Active</span>
+          <div className="space-y-6">
+            <div className="saas-card p-6 border-orange-500/20 ring-1 ring-orange-500/10 shadow-[0_0_40px_-10px_rgba(249,115,22,0.1)]">
+              <div className="flex items-center justify-between mb-8">
+                 <h4 className="text-sm font-semibold text-white">Active Session</h4>
+                 <div className="flex items-center gap-2">
+                   <span className="status-dot active" />
+                   <span className="text-green-400 text-xs font-semibold">Recording</span>
+                 </div>
               </div>
-              <span className="text-xs text-slate-400">
-                {format(new Date(activeSession.start_time), 'dd MMM, hh:mm a')}
-              </span>
-            </div>
+              
+              <div className="text-center py-6">
+                <p className="text-xs text-slate-400 font-medium mb-2 uppercase tracking-wide">Elapsed Time</p>
+                <p className="text-5xl font-light text-white tracking-tight">{elapsedTime}</p>
+              </div>
 
-            {/* Elapsed time */}
-            <div className="text-center py-4">
-              <p className="text-xs text-slate-400 mb-1">ELAPSED TIME</p>
-              <p className="text-4xl font-mono font-bold text-white tracking-wider">{elapsedTime}</p>
-            </div>
-
-            {/* Next checkin countdown */}
-            {nextCheckinIn !== null && (
-              <div className="mt-2 mb-4 bg-amber-500/10 border border-amber-500/30 rounded-xl p-3 flex items-center gap-3">
-                <Clock className="w-4 h-4 text-amber-400 shrink-0" />
-                <div>
-                  <p className="text-xs font-medium text-amber-300">Next photo check-in</p>
-                  <p className="text-lg font-mono font-bold text-amber-400">{formatCountdown(nextCheckinIn)}</p>
+              {nextCheckinIn !== null && (
+                <div className="bg-white/5 rounded-xl p-4 flex items-center justify-between mb-6">
+                  <div className="flex items-center gap-3">
+                    <Clock className="w-4 h-4 text-slate-400" />
+                    <span className="text-sm text-slate-300">Next photo check-in</span>
+                  </div>
+                  <span className="text-lg font-medium text-orange-400">{formatCountdown(nextCheckinIn)}</span>
                 </div>
-              </div>
-            )}
+              )}
 
-            {/* Check-ins done */}
+              <div className="pt-2">
+                <button
+                  id="end-session-btn"
+                  onClick={endSession}
+                  disabled={actionLoading}
+                  className="w-full bg-red-500/10 border border-red-500/20 text-red-500 hover:bg-red-500 hover:text-white py-3.5 rounded-xl flex items-center justify-center gap-2 text-sm font-semibold transition-all disabled:opacity-50"
+                >
+                  {actionLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Square size={16} fill="currentColor" />}
+                  End Session
+                </button>
+              </div>
+            </div>
+
+            {/* Current Session Photos */}
             {checkins.length > 0 && (
-              <div className="mb-4">
-                <p className="text-xs text-slate-400 mb-2">{checkins.length} check-in{checkins.length !== 1 ? 's' : ''} submitted</p>
-                <div className="flex gap-2 overflow-x-auto pb-1">
+              <div className="saas-card p-6">
+                <h4 className="text-sm font-semibold text-white mb-4">Photos Uploaded ({checkins.length})</h4>
+                <div className="grid grid-cols-4 gap-3">
                   {checkins.map(c => (
-                    <a key={c.id} href={c.photo_url} target="_blank" rel="noreferrer"
-                      className="shrink-0 w-16 h-16 rounded-xl overflow-hidden border border-white/10 block">
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <div key={c.id} className="aspect-square rounded-lg overflow-hidden border border-white/10">
                       <img src={c.photo_url} alt="checkin" className="w-full h-full object-cover" />
-                    </a>
+                    </div>
                   ))}
                 </div>
               </div>
             )}
-
-            <div className="grid grid-cols-2 gap-3">
-              <button
-                id="upload-photo-btn"
-                onClick={() => setShowPhotoModal(true)}
-                className="flex items-center justify-center gap-2 py-3 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-sm font-medium transition-all"
-              >
-                <Camera className="w-4 h-4" />
-                Upload Photo
-              </button>
-              <button
-                id="end-session-btn"
-                onClick={endSession}
-                disabled={actionLoading}
-                className="flex items-center justify-center gap-2 py-3 rounded-xl bg-red-600/80 hover:bg-red-600 text-white text-sm font-medium transition-all disabled:opacity-60"
-              >
-                {actionLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Square className="w-4 h-4" />}
-                End Session
-              </button>
-            </div>
           </div>
         ) : (
           /* Start session card */
-          <div className="bg-slate-900 border border-white/10 rounded-2xl p-6 text-center">
-            <div className="w-20 h-20 rounded-full bg-blue-600/10 border-2 border-blue-500/30 flex items-center justify-center mx-auto mb-4">
-              <MapPin className="w-9 h-9 text-blue-400" />
+          <div className="saas-card p-10 text-center py-16">
+            <div className="w-16 h-16 rounded-full bg-orange-500/10 border border-orange-500/20 flex items-center justify-center mx-auto mb-6">
+              <MapPin className="w-8 h-8 text-orange-500" />
             </div>
-            <h2 className="text-lg font-semibold text-white mb-1">Ready to start?</h2>
-            <p className="text-slate-400 text-sm mb-6">
+            <h2 className="text-xl font-bold text-white mb-2">Ready to start?</h2>
+            <p className="text-slate-400 text-sm mb-8 max-w-xs mx-auto">
               Press Start to record your location and begin your field session.
             </p>
             <button
               id="start-session-btn"
               onClick={startSession}
               disabled={actionLoading}
-              className="inline-flex items-center justify-center gap-2 px-8 py-3.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-semibold transition-all duration-200 shadow-lg shadow-blue-600/30 disabled:opacity-60 text-sm"
+              className="btn-primary w-full py-4 flex items-center justify-center gap-2 text-base"
             >
-              {actionLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Play className="w-4 h-4" />}
+              {actionLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Play size={20} fill="currentColor" />}
               {actionLoading ? 'Getting location...' : 'Start Session'}
             </button>
-            <p className="text-xs text-slate-500 mt-3">Your GPS location will be captured at start and end</p>
+            <p className="text-xs text-slate-500 mt-6">
+              Your GPS location will be captured at start and end.
+            </p>
           </div>
         )}
 
         {/* Past sessions */}
         {pastSessions.length > 0 && (
-          <div>
-            <h3 className="text-sm font-semibold text-slate-400 uppercase tracking-wider mb-3">Past Sessions</h3>
-            <div className="space-y-2">
+          <div className="space-y-4 pt-4">
+            <h4 className="section-label">Past Sessions</h4>
+            <div className="space-y-3">
               {pastSessions.map(session => (
-                <div key={session.id} className="bg-slate-900 border border-white/10 rounded-xl px-4 py-3 flex items-center justify-between">
-                  <div>
-                    <div className="flex items-center gap-2 mb-0.5">
-                      <span className="status-dot ended" />
-                      <span className="text-sm font-medium text-white">
-                        {format(new Date(session.start_time), 'dd MMM yyyy')}
-                      </span>
+                <div key={session.id} className="saas-card px-5 py-4 flex items-center justify-between">
+                  <div className="flex items-center gap-4">
+                    <div className="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center">
+                      <CheckCircle className="w-4 h-4 text-slate-400" />
                     </div>
-                    <p className="text-xs text-slate-400">
-                      {format(new Date(session.start_time), 'hh:mm a')}
-                      {session.end_time ? ` → ${format(new Date(session.end_time), 'hh:mm a')}` : ''}
-                    </p>
+                    <div>
+                      <p className="text-sm font-medium text-white">
+                        {format(new Date(session.start_time), 'MMM dd, yyyy')}
+                      </p>
+                      <p className="text-xs text-slate-400 mt-0.5">
+                        {format(new Date(session.start_time), 'hh:mm a')}
+                        {session.end_time ? ` → ${format(new Date(session.end_time), 'hh:mm a')}` : ''}
+                      </p>
+                    </div>
                   </div>
-                  <div className="text-right">
-                    <span className="text-xs text-slate-500">
-                      {formatDistanceToNow(new Date(session.start_time), { addSuffix: true })}
-                    </span>
-                  </div>
+                  <span className="text-xs font-medium text-slate-500 bg-white/5 px-2 py-1 rounded-md">
+                    {formatDistanceToNow(new Date(session.start_time), { addSuffix: true })}
+                  </span>
                 </div>
               ))}
             </div>
@@ -401,17 +390,17 @@ export default function UserDashboard() {
         )}
       </main>
 
-      {/* Photo Modal / Notification */}
+      {/* Photo Sync Modal */}
       {showPhotoModal && (
-        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-          <div className="bg-slate-900 border border-white/10 rounded-2xl p-6 w-full max-w-sm">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="w-10 h-10 rounded-xl bg-amber-500/20 border border-amber-500/30 flex items-center justify-center">
-                <Camera className="w-5 h-5 text-amber-400" />
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4 bg-[#05070a]/80 backdrop-blur-sm" onClick={() => setShowPhotoModal(false)}>
+          <div className="saas-card p-8 w-full max-w-sm" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center gap-4 mb-6">
+              <div className="w-12 h-12 rounded-full bg-orange-500/20 border border-orange-500/30 flex items-center justify-center shrink-0">
+                <Camera className="w-6 h-6 text-orange-500" />
               </div>
               <div>
-                <h3 className="text-white font-semibold text-sm">Photo Check-in Required</h3>
-                <p className="text-slate-400 text-xs">Take a photo to confirm your field presence</p>
+                <h3 className="text-lg font-bold text-white">Photo Required</h3>
+                <p className="text-slate-400 text-sm">Please take a photo to confirm your presence.</p>
               </div>
             </div>
 
@@ -428,16 +417,16 @@ export default function UserDashboard() {
               id="take-photo-btn"
               onClick={() => fileInputRef.current?.click()}
               disabled={photoUploading}
-              className="w-full flex items-center justify-center gap-2 py-3.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-900 font-semibold text-sm transition-all mb-3"
+              className="w-full btn-primary py-3.5 flex items-center justify-center gap-2 text-sm mb-3"
             >
-              {photoUploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Camera className="w-4 h-4" />}
-              {photoUploading ? 'Uploading...' : 'Take / Choose Photo'}
+              {photoUploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Camera size={16} />}
+              {photoUploading ? 'Uploading...' : 'Take Photo'}
             </button>
 
             <button
               id="dismiss-modal-btn"
               onClick={() => setShowPhotoModal(false)}
-              className="w-full py-2.5 rounded-xl text-slate-400 hover:text-white text-sm transition-colors"
+              className="w-full py-2.5 rounded-xl text-slate-400 hover:text-white hover:bg-white/5 text-sm font-medium transition-colors"
             >
               Remind me later
             </button>
