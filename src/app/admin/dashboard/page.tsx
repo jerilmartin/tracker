@@ -7,8 +7,10 @@ import {
   MapPin, Users, Activity, LogOut, Clock, Camera,
   ChevronDown, ChevronUp, RefreshCw, Shield, CheckCircle,
   AlertCircle, Loader2, Phone, Navigation, Image as ImageIcon, UserPlus,
-  Search, Filter
+  Search, Filter, Download, FileSpreadsheet, Check, Calendar,
+  UserCheck, UserMinus, History
 } from 'lucide-react'
+import * as XLSX from 'xlsx'
 import { motion, AnimatePresence, LayoutGroup } from 'framer-motion'
 import { createWorker, deleteWorker } from '@/app/actions/admin'
 import type { Profile, Session, PhotoCheckin } from '@/lib/types'
@@ -18,7 +20,7 @@ interface UserWithSession extends Profile {
   sessions: Array<Session & { photo_checkins: PhotoCheckin[] }>
 }
 
-type TabType = 'active' | 'all' | 'workers'
+type TabType = 'active' | 'inactive' | 'date' | 'workers'
 
 export default function AdminDashboard() {
   const router = useRouter()
@@ -31,6 +33,7 @@ export default function AdminDashboard() {
   const [activeTab, setActiveTab] = useState<TabType>('active')
   const [expandedUser, setExpandedUser] = useState<string | null>(null)
   const [selectedPhoto, setSelectedPhoto] = useState<string | null>(null)
+  const [selectedDate, setSelectedDate] = useState<string>(format(new Date(), 'yyyy-MM-dd'))
   const [actionLoading, setActionLoading] = useState(false)
   const [actionError, setActionError] = useState('')
   const [actionSuccess, setActionSuccess] = useState('')
@@ -50,16 +53,17 @@ export default function AdminDashboard() {
   }, [selectedPhoto])
 
   const [searchQuery, setSearchQuery] = useState('')
-  const [areaFilter, setAreaFilter] = useState('all')
+  const [areaFilter, setAreaFilter] = useState<string[]>([])
+  const [isAreaDropdownOpen, setIsAreaDropdownOpen] = useState(false)
 
   const loadData = useCallback(async () => {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) { router.push('/login'); return }
 
     const { data: prof, error: profErr } = await supabase.from('profiles').select('*').eq('id', user.id).single()
-    if (prof?.role !== 'admin') { 
+    if (prof?.role !== 'admin') {
       setAdminProfile({ full_name: `ERROR: Role is ${prof?.role || 'null'}. Error: ${profErr?.message || 'none'}` } as any)
-      return 
+      return
     }
     setAdminProfile(prof)
 
@@ -131,14 +135,33 @@ export default function AdminDashboard() {
   const activeUsers = users.filter(u => u.sessions.some(s => s.status === 'active'))
   const totalSessions = users.reduce((acc, u) => acc + u.sessions.length, 0)
   const totalCheckins = users.reduce((acc, u) => acc + u.sessions.reduce((sAcc, s) => sAcc + s.photo_checkins.length, 0), 0)
-  
+
   const uniqueAreas = Array.from(new Set(users.map(u => u.assigned_area).filter(Boolean))).sort() as string[]
 
-  const tabUsers = activeTab === 'active' ? activeUsers : users
+  const getTabUsers = () => {
+    switch (activeTab) {
+      case 'active':
+        return users.filter(u => u.sessions.some(s => s.status === 'active'))
+      case 'inactive':
+        return users.filter(u => !u.sessions.some(s => s.status === 'active'))
+      case 'date':
+        return users // Show all users, label them by activity on that date
+      default:
+        return users
+    }
+  }
+
+  const tabUsers = getTabUsers()
 
   const displayedUsers = tabUsers.filter(user => {
     const matchesSearch = user.full_name.toLowerCase().includes(searchQuery.toLowerCase())
-    const matchesArea = areaFilter === 'all' || user.assigned_area === areaFilter
+    const matchesArea = areaFilter.length === 0 || (user.assigned_area && areaFilter.includes(user.assigned_area))
+
+    // In "date" mode, we might want to filter only those who worked? 
+    // Or users might want to see everyone to find the inactive ones.
+    // The user said "understand who and all were active on that day and who were inactive".
+    // So we show all, but maybe provide an internal toggle? 
+    // For now, show all filtered by search/area.
     return matchesSearch && matchesArea
   })
 
@@ -173,6 +196,45 @@ export default function AdminDashboard() {
     setActionLoading(false)
   }
 
+  const handleExportExcel = () => {
+    const dataToExport: any[] = []
+
+    displayedUsers.forEach(user => {
+      const latestSession = user.sessions[0]
+
+      if (!latestSession) {
+        dataToExport.push({
+          'User ID': user.full_name,
+          'Ondriyam': user.assigned_area || 'Unassigned',
+          'Status': 'No Sessions',
+          'Duration': '-',
+          'Location': '-'
+        })
+      } else {
+        const start = new Date(latestSession.start_time)
+        const isOngoing = latestSession.status === 'active'
+        const end = isOngoing ? new Date() : (latestSession.end_time ? new Date(latestSession.end_time) : new Date())
+
+        const durationMin = differenceInMinutes(end, start)
+        const durationStr = `${Math.floor(durationMin / 60)}h ${durationMin % 60}m`
+
+        dataToExport.push({
+          'User ID': user.full_name,
+          'Ondriyam': user.assigned_area || 'Unassigned',
+          'Status': latestSession.status.toUpperCase(),
+          'Duration': durationStr,
+          'Location': latestSession.start_location ? `${latestSession.start_location.lat}, ${latestSession.start_location.lng}` : '-'
+        })
+      }
+    })
+
+    const worksheet = XLSX.utils.json_to_sheet(dataToExport)
+    const workbook = XLSX.utils.book_new()
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Session Report")
+
+    XLSX.writeFile(workbook, `TravelTrack_Report_${format(new Date(), 'yyyy-MM-dd')}.xlsx`)
+  }
+
   if (loading) {
     return (
       <div className="min-h-screen bg-[#05070a] flex items-center justify-center">
@@ -199,6 +261,15 @@ export default function AdminDashboard() {
             <div className="hidden sm:block text-right mr-2">
               <p className="text-sm font-medium text-white">{adminProfile?.full_name || 'Administrator'}</p>
             </div>
+            <button
+              id="export-excel-btn"
+              onClick={handleExportExcel}
+              className="p-2.5 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 text-slate-300 transition-colors flex items-center gap-2 group"
+              title="Export to Excel"
+            >
+              <FileSpreadsheet className="w-4 h-4 text-emerald-500" />
+              <span className="text-xs font-medium hidden md:inline">Export Excel</span>
+            </button>
             <button
               id="refresh-btn"
               onClick={handleRefresh}
@@ -228,18 +299,20 @@ export default function AdminDashboard() {
         </div>
 
         {/* Tab Controls */}
-        <div className="flex gap-2 border-b border-white/5 pb-px mb-6">
+        <div className="flex flex-wrap gap-2 border-b border-white/5 pb-px mb-6">
           {[
-            { key: 'active', label: 'Active Workers' },
-            { key: 'all', label: 'All Workers' },
-            { key: 'workers', label: 'Manage Workers' },
+            { key: 'active', label: 'Active', icon: <UserCheck size={14} className="mr-2" /> },
+            { key: 'inactive', label: 'Inactive', icon: <UserMinus size={14} className="mr-2" /> },
+            { key: 'date', label: 'By Date', icon: <Calendar size={14} className="mr-2" /> },
+            { key: 'workers', label: 'Manage Workers', icon: <Users size={14} className="mr-2" /> },
           ].map(tab => (
             <button
               key={tab.key}
               onClick={() => setActiveTab(tab.key as TabType)}
-              className="relative px-6 py-4 text-sm font-medium transition-colors"
+              className="relative px-6 py-4 text-sm font-medium transition-colors flex items-center"
             >
-              <span className={activeTab === tab.key ? 'text-orange-500' : 'text-slate-400'}>
+              <span className={`flex items-center ${activeTab === tab.key ? 'text-orange-500' : 'text-slate-400'}`}>
+                {tab.icon}
                 {tab.label}
               </span>
               {activeTab === tab.key && (
@@ -252,6 +325,38 @@ export default function AdminDashboard() {
             </button>
           ))}
         </div>
+
+        {/* Date Selector for 'date' tab */}
+        {activeTab === 'date' && (
+          <div className="bg-white/[0.02] border border-white/5 p-6 rounded-2xl mb-6 flex flex-col sm:flex-row items-center gap-6">
+            <div className="flex items-center gap-4">
+              <div className="p-3 rounded-xl bg-orange-500/10 border border-orange-500/20">
+                <Calendar className="w-5 h-5 text-orange-500" />
+              </div>
+              <div>
+                <h3 className="text-sm font-bold text-white uppercase tracking-wider">Target Date Intelligence</h3>
+                <p className="text-xs text-slate-500">Analyze worker deployment for a specific day</p>
+              </div>
+            </div>
+            <div className="flex-1 w-full sm:w-auto">
+              <input
+                type="date"
+                value={selectedDate}
+                onChange={(e) => setSelectedDate(e.target.value)}
+                className="w-full sm:w-64 bg-[#0a0c10] border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-orange-500/50 transition-all cursor-pointer"
+                style={{ colorScheme: 'dark' }}
+              />
+            </div>
+            <div className="flex gap-4 text-xs font-bold uppercase tracking-widest text-slate-500">
+              <div className="flex items-center gap-2">
+                <div className="w-2 h-2 rounded-full bg-green-500" /> Worked
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-2 h-2 rounded-full bg-slate-700" /> No Activity
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Search & Filter Bar */}
         {activeTab !== 'workers' && (
@@ -267,23 +372,63 @@ export default function AdminDashboard() {
               />
             </div>
             <div className="relative min-w-[240px]">
-              <Filter className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
-              <select
-                value={areaFilter}
-                onChange={(e) => setAreaFilter(e.target.value)}
-                className="w-full bg-[#0a0c10] border border-white/10 rounded-xl pl-10 pr-10 py-2.5 text-sm text-white appearance-none focus:outline-none focus:border-orange-500/50 transition-all cursor-pointer hover:border-white/20"
-                style={{ colorScheme: 'dark' }}
+              <div
+                onClick={() => setIsAreaDropdownOpen(!isAreaDropdownOpen)}
+                className="w-full bg-[#0a0c10] border border-white/10 rounded-xl pl-10 pr-10 py-2.5 text-sm text-white cursor-pointer hover:border-white/20 transition-all flex items-center justify-between"
               >
-                <option value="all" className="bg-[#0a0c10] text-slate-400">All Assigned Areas</option>
-                {uniqueAreas.map(area => (
-                  <option key={area} value={area} className="bg-[#0a0c10] text-white font-medium">
-                    {area}
-                  </option>
-                ))}
-              </select>
-              <div className="absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none text-slate-500">
-                <ChevronDown className="w-4 h-4" />
+                <div className="flex items-center gap-2 overflow-hidden">
+                  <Filter className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
+                  <span className="truncate">
+                    {areaFilter.length === 0
+                      ? 'All Assigned Areas'
+                      : `${areaFilter.length} Area${areaFilter.length > 1 ? 's' : ''} Selected`}
+                  </span>
+                </div>
+                <ChevronDown className={`w-4 h-4 text-slate-500 transition-transform ${isAreaDropdownOpen ? 'rotate-180' : ''}`} />
               </div>
+
+              {isAreaDropdownOpen && (
+                <>
+                  <div
+                    className="fixed inset-0 z-30"
+                    onClick={() => setIsAreaDropdownOpen(false)}
+                  />
+                  <div className="absolute top-full left-0 right-0 mt-2 z-40 bg-[#0a0c10] border border-white/10 rounded-xl shadow-2xl max-h-[300px] overflow-y-auto p-2 scrollbar-thin scrollbar-thumb-white/10">
+                    <button
+                      onClick={() => {
+                        setAreaFilter([])
+                        setIsAreaDropdownOpen(false)
+                      }}
+                      className="w-full text-left px-3 py-2 text-xs font-bold text-orange-500 hover:bg-white/5 rounded-lg mb-1"
+                    >
+                      CLEAR ALL FILTERS
+                    </button>
+                    {uniqueAreas.map(area => (
+                      <label
+                        key={area}
+                        className="flex items-center gap-3 px-3 py-2 hover:bg-white/5 rounded-lg cursor-pointer transition-colors group"
+                      >
+                        <div className={`w-4 h-4 rounded border flex items-center justify-center transition-colors ${areaFilter.includes(area) ? 'bg-orange-500 border-orange-500' : 'border-white/20 group-hover:border-white/40'}`}>
+                          {areaFilter.includes(area) && <Check className="w-3 h-3 text-white" />}
+                        </div>
+                        <input
+                          type="checkbox"
+                          className="hidden"
+                          checked={areaFilter.includes(area)}
+                          onChange={() => {
+                            setAreaFilter(prev =>
+                              prev.includes(area)
+                                ? prev.filter(a => a !== area)
+                                : [...prev, area]
+                            )
+                          }}
+                        />
+                        <span className="text-sm text-slate-200 truncate">{area}</span>
+                      </label>
+                    ))}
+                  </div>
+                </>
+              )}
             </div>
           </div>
         )}
@@ -303,7 +448,7 @@ export default function AdminDashboard() {
                     <p className="text-slate-400 text-sm">Add a new user to the field team</p>
                   </div>
                 </div>
-                
+
                 {actionError && (
                   <div className="bg-red-500/10 border border-red-500/20 rounded-xl p-4 mb-6 text-red-400 text-sm flex gap-2">
                     <AlertCircle className="w-5 h-5 shrink-0" />
@@ -377,7 +522,7 @@ export default function AdminDashboard() {
             <div className="text-center py-24 saas-card">
               <Search className="w-12 h-12 text-slate-600 mx-auto mb-4" />
               <p className="text-slate-400 text-sm font-medium">
-                {searchQuery || areaFilter !== 'all' ? 'No workers match your search criteria.' : 'No workers found in this category.'}
+                {searchQuery || areaFilter.length > 0 ? 'No workers match your search criteria.' : 'No workers found in this category.'}
               </p>
             </div>
           ) : (
@@ -389,6 +534,7 @@ export default function AdminDashboard() {
                   isExpanded={expandedUser === user.id}
                   onToggle={() => setExpandedUser(expandedUser === user.id ? null : user.id)}
                   onPhotoClick={setSelectedPhoto}
+                  targetDate={activeTab === 'date' ? selectedDate : undefined}
                 />
               ))}
             </div>
@@ -432,21 +578,32 @@ function StatCard({ label, value, icon, active }: { label: string, value: number
   )
 }
 
-function UserCard({ user, isExpanded, onToggle, onPhotoClick }: {
+function UserCard({ user, isExpanded, onToggle, onPhotoClick, targetDate }: {
   user: UserWithSession
   isExpanded: boolean
   onToggle: () => void
   onPhotoClick: (url: string) => void
+  targetDate?: string // yyyy-MM-dd
 }) {
-  const activeSession = user.sessions.find(s => s.status === 'active')
+  const activeSessionForDisplay = targetDate
+    ? user.sessions.find(s => format(new Date(s.start_time), 'yyyy-MM-dd') === targetDate)
+    : user.sessions.find(s => s.status === 'active')
+
+  const activeSession = user.sessions.find(s => s.status === 'active') // For live indicators
   const allCheckins = user.sessions.flatMap(s => s.photo_checkins)
-  const sessionDuration = activeSession ? differenceInMinutes(new Date(), new Date(activeSession.start_time)) : null
-  
+  const sessionDuration = activeSessionForDisplay ? (() => {
+    const start = new Date(activeSessionForDisplay.start_time)
+    const end = (activeSessionForDisplay.status === 'active' && (!targetDate || targetDate === format(new Date(), 'yyyy-MM-dd')))
+      ? new Date()
+      : (activeSessionForDisplay.end_time ? new Date(activeSessionForDisplay.end_time) : new Date(activeSessionForDisplay.start_time))
+    return differenceInMinutes(end, start)
+  })() : null
+
   // Compliance Logic: 1 photo required immediately, then 1 every 60m with 20m grace period.
   const missedCount = (() => {
     if (!activeSession) return 0
     const minutes = differenceInMinutes(new Date(), new Date(activeSession.start_time))
-    
+
     // Initial Photo (due at T+0, violation at T+20)
     if (allCheckins.length === 0) {
       return minutes > 20 ? 1 : 0
@@ -456,7 +613,7 @@ function UserCard({ user, isExpanded, onToggle, onPhotoClick }: {
     // A photo is "due" every 60 mins. Late if > 80 mins since last one or start.
     const expectedFromDuration = Math.floor(minutes / 60) + 1
     const actual = activeSession.photo_checkins.length
-    
+
     // If we've passed the (expected * 60 + 20) threshold without the photo, it's missed.
     const isLateForNext = minutes > (actual * 60 + 20)
     return isLateForNext ? (expectedFromDuration - actual) : Math.max(0, expectedFromDuration - 1 - actual)
@@ -468,20 +625,20 @@ function UserCard({ user, isExpanded, onToggle, onPhotoClick }: {
         onClick={onToggle}
         className="w-full text-left p-5 flex items-center gap-5 transition-colors hover:bg-white/[0.01]"
       >
-        <div className={`w-12 h-12 rounded-full flex items-center justify-center font-bold text-lg transition-transform ${isExpanded ? 'scale-110' : ''} ${activeSession ? 'bg-orange-500/20 text-orange-500 border border-orange-500/30' : 'bg-white/5 text-slate-300 border border-white/10'}`}>
+        <div className={`w-12 h-12 rounded-full flex items-center justify-center font-bold text-lg transition-transform ${isExpanded ? 'scale-110' : ''} ${activeSessionForDisplay ? 'bg-orange-500/20 text-orange-500 border border-orange-500/30 shadow-[0_0_15px_rgba(249,115,22,0.1)]' : 'bg-white/5 text-slate-500 border border-white/5 opacity-60'}`}>
           {user.full_name.substring(0, 1).toUpperCase()}
         </div>
 
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-3">
-            <p className="font-semibold text-white text-base tracking-tight">{user.full_name}</p>
-            {activeSession && (
+            <p className={`font-semibold text-base tracking-tight ${activeSessionForDisplay ? 'text-white' : 'text-slate-400'}`}>{user.full_name}</p>
+            {activeSessionForDisplay && (
               <div className="flex items-center gap-2">
-                <span className="text-[10px] font-bold text-green-400 bg-green-500/10 px-2 py-0.5 rounded-full border border-green-500/20 uppercase tracking-wider">
-                  ACTIVE
+                <span className={`text-[10px] font-bold ${activeSessionForDisplay.status === 'active' ? 'text-green-400 bg-green-500/10 border-green-500/20' : 'text-orange-400 bg-orange-500/10 border-orange-500/20'} px-2 py-0.5 rounded-full border uppercase tracking-wider`}>
+                  {activeSessionForDisplay.status === 'active' ? 'ACTIVE' : 'WORKED'}
                 </span>
-                {missedCount > 0 && (
-                  <motion.span 
+                {activeSessionForDisplay.status === 'active' && missedCount > 0 && (
+                  <motion.span
                     initial={{ scale: 0.8 }}
                     animate={{ scale: [0.8, 1.1, 1] }}
                     transition={{ repeat: Infinity, duration: 2 }}
@@ -500,7 +657,7 @@ function UserCard({ user, isExpanded, onToggle, onPhotoClick }: {
         </div>
 
         <div className="hidden sm:flex flex-col items-end shrink-0 mr-2">
-          {activeSession ? (
+          {activeSessionForDisplay ? (
             <div className="text-right">
               <p className="text-orange-400 font-bold text-sm leading-none mb-1">
                 {sessionDuration !== null ? `${Math.floor(sessionDuration / 60)}h ${sessionDuration % 60}m` : '0h 0m'}
@@ -509,13 +666,12 @@ function UserCard({ user, isExpanded, onToggle, onPhotoClick }: {
             </div>
           ) : (
             <div className="text-right">
-              <p className="text-slate-300 text-sm font-medium leading-none mb-1">{user.sessions.length}</p>
-              <p className="text-[10px] text-slate-500 uppercase font-bold tracking-widest">SESSIONS</p>
+              <p className="text-slate-600 text-[10px] font-bold uppercase tracking-widest">Inactive</p>
             </div>
           )}
         </div>
-        
-        <motion.div 
+
+        <motion.div
           animate={{ rotate: isExpanded ? 180 : 0 }}
           className="p-2 rounded-lg bg-white/5 text-slate-500"
         >
@@ -544,33 +700,35 @@ function UserCard({ user, isExpanded, onToggle, onPhotoClick }: {
                       </span>
                     )}
                   </div>
-                  
-                  {activeSession ? (
+
+                  {activeSessionForDisplay ? (
                     <div className="bg-white/[0.03] border border-white/10 rounded-2xl p-5 space-y-4 shadow-inner">
                       <div className="flex justify-between items-center">
                         <span className="text-xs text-slate-400 font-medium">Session Start</span>
-                        <span className="text-sm font-bold text-white">{format(new Date(activeSession.start_time), 'hh:mm a')}</span>
+                        <span className="text-sm font-bold text-white">{format(new Date(activeSessionForDisplay.start_time), 'hh:mm a')}</span>
                       </div>
-                      
+
+                      {activeSessionForDisplay.end_time && (
+                        <div className="flex justify-between items-center border-t border-white/5 pt-4">
+                          <span className="text-xs text-slate-400 font-medium">Session End</span>
+                          <span className="text-sm font-bold text-white">{format(new Date(activeSessionForDisplay.end_time), 'hh:mm a')}</span>
+                        </div>
+                      )}
+
                       <div className="flex justify-between items-center border-t border-white/5 pt-4">
                         <span className="text-xs text-slate-400 font-medium">Compliance Pulse</span>
                         <div className="text-right">
                           <span className={`text-xs font-black px-2 py-1 rounded-md leading-none inline-block ${missedCount === 0 ? 'bg-green-500/10 text-green-400' : 'bg-red-500/10 text-red-500'}`}>
-                            {missedCount === 0 ? 'ON TRACK' : 'VIOLATION DETECTED'}
+                            {missedCount === 0 ? 'COMPLIANT' : 'VIOLATION'}
                           </span>
-                          {missedCount > 0 && (
-                            <p className="text-[10px] text-red-400 font-bold mt-1.5 uppercase">
-                              {missedCount} HOURLY WINDOW{missedCount > 1 ? 'S' : ''} MISSED
-                            </p>
-                          )}
                         </div>
                       </div>
 
-                      {activeSession.start_location && (
+                      {activeSessionForDisplay.start_location && (
                         <div className="flex justify-between items-center border-t border-white/5 pt-4">
-                          <span className="text-xs text-slate-400 font-medium">Start Coordinates</span>
+                          <span className="text-xs text-slate-400 font-medium">Capture Location</span>
                           <a
-                            href={`https://maps.google.com/?q=${activeSession.start_location.lat},${activeSession.start_location.lng}`}
+                            href={`https://maps.google.com/?q=${activeSessionForDisplay.start_location.lat},${activeSessionForDisplay.start_location.lng}`}
                             target="_blank" rel="noreferrer"
                             className="text-xs text-blue-400 hover:text-blue-300 font-bold flex items-center gap-1 transition-colors"
                           >
@@ -582,26 +740,28 @@ function UserCard({ user, isExpanded, onToggle, onPhotoClick }: {
                     </div>
                   ) : (
                     <div className="bg-white/[0.02] border border-dashed border-white/10 rounded-2xl p-8 text-center">
-                      <p className="text-sm text-slate-500 font-medium">Worker currently offline.</p>
+                      <p className="text-sm text-slate-500 font-medium">No activity for this period.</p>
                     </div>
                   )}
                 </div>
 
-                {/* Live Photo Stream */}
+                {/* Live Photo Stream (Targeted to the session on that date) */}
                 <div className="space-y-4">
                   <div className="flex items-center justify-between px-1">
-                    <h4 className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Recent Captures</h4>
-                    <span className="text-[10px] font-bold text-slate-400">{allCheckins.length} Total</span>
+                    <h4 className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Day Captures</h4>
+                    <span className="text-[10px] font-bold text-slate-400">
+                      {activeSessionForDisplay?.photo_checkins.length || 0} Photos
+                    </span>
                   </div>
-                  
-                  {allCheckins.length === 0 ? (
+
+                  {!activeSessionForDisplay || activeSessionForDisplay.photo_checkins.length === 0 ? (
                     <div className="bg-white/[0.02] border border-dashed border-white/10 rounded-2xl p-10 text-center">
                       <ImageIcon className="w-8 h-8 text-slate-700 mx-auto mb-3 opacity-30" />
-                      <p className="text-xs text-slate-500 font-bold uppercase tracking-wide">Empty Stream</p>
+                      <p className="text-xs text-slate-500 font-bold uppercase tracking-wide">None Found</p>
                     </div>
                   ) : (
                     <div className="grid grid-cols-3 gap-3">
-                      {allCheckins.slice(0, 6).map(photo => (
+                      {activeSessionForDisplay.photo_checkins.map(photo => (
                         <motion.button
                           key={photo.id}
                           whileHover={{ scale: 1.05, y: -2 }}
