@@ -77,3 +77,42 @@ export async function createWorker(formData: FormData) {
     return { success: false, error: err.message || 'Failed to create worker' }
   }
 }
+
+export async function deleteWorker(userId: string) {
+  try {
+    const cookieStore = await cookies()
+    const supabaseClient = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          getAll() { return cookieStore.getAll() },
+          setAll() {},
+        },
+      }
+    )
+
+    // 1. Verify Admin Auth
+    const { data: { user } } = await supabaseClient.auth.getUser()
+    if (!user) throw new Error('Not authenticated')
+    
+    const { data: profile } = await supabaseClient.from('profiles').select('role').eq('id', user.id).single()
+    if (profile?.role !== 'admin') throw new Error('Not authorized')
+
+    // 2. Auth Service Role
+    const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+    if (!serviceRoleKey) throw new Error("Service key is missing.")
+
+    const adminAuthClient = createSupabaseClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, serviceRoleKey, {
+      auth: { autoRefreshToken: false, persistSession: false }
+    })
+
+    // 3. Delete from Auth (Triggers profile deletion cascade if setup, or we manually handle it)
+    const { error: deleteError } = await adminAuthClient.auth.admin.deleteUser(userId)
+    if (deleteError) throw deleteError
+
+    return { success: true }
+  } catch (err: any) {
+    return { success: false, error: err.message || 'Failed to delete worker' }
+  }
+}

@@ -68,9 +68,9 @@ export default function LoginPage() {
       }
 
       if (profile?.role === 'admin') {
-        router.push('/admin/dashboard')
+        router.replace('/admin/dashboard')
       } else {
-        router.push('/user/dashboard')
+        router.replace('/user/dashboard')
       }
     }
   }
@@ -128,7 +128,7 @@ export default function LoginPage() {
                   value={username}
                   onChange={e => setUsername(e.target.value)}
                   required
-                  placeholder={mode === 'admin' ? 'admin_id' : 'worker_id'}
+                  placeholder={mode === 'admin' ? 'admin' : 'username'}
                   className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-slate-500 focus:outline-none focus:border-orange-500 focus:ring-1 focus:ring-orange-500 transition-all text-sm"
                 />
               </div>
