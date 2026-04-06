@@ -20,7 +20,7 @@ interface UserWithSession extends Profile {
   sessions: Array<Session & { photo_checkins: PhotoCheckin[] }>
 }
 
-type TabType = 'active' | 'inactive' | 'date' | 'workers'
+type TabType = 'active' | 'absent' | 'date' | 'workers'
 
 export default function AdminDashboard() {
   const router = useRouter()
@@ -142,7 +142,7 @@ export default function AdminDashboard() {
     switch (activeTab) {
       case 'active':
         return users.filter(u => u.sessions.some(s => s.status === 'active'))
-      case 'inactive':
+      case 'absent':
         return users.filter(u => !u.sessions.some(s => s.status === 'active'))
       case 'date':
         return users // Show all users, label them by activity on that date
@@ -302,7 +302,7 @@ export default function AdminDashboard() {
         <div className="flex flex-wrap gap-2 border-b border-white/5 pb-px mb-6">
           {[
             { key: 'active', label: 'Active', icon: <UserCheck size={14} className="mr-2" /> },
-            { key: 'inactive', label: 'Inactive', icon: <UserMinus size={14} className="mr-2" /> },
+            { key: 'absent', label: 'Absent', icon: <UserMinus size={14} className="mr-2" /> },
             { key: 'date', label: 'By Date', icon: <Calendar size={14} className="mr-2" /> },
             { key: 'workers', label: 'Manage Workers', icon: <Users size={14} className="mr-2" /> },
           ].map(tab => (
@@ -637,16 +637,7 @@ function UserCard({ user, isExpanded, onToggle, onPhotoClick, targetDate }: {
                 <span className={`text-[10px] font-bold ${activeSessionForDisplay.status === 'active' ? 'text-green-400 bg-green-500/10 border-green-500/20' : 'text-orange-400 bg-orange-500/10 border-orange-500/20'} px-2 py-0.5 rounded-full border uppercase tracking-wider`}>
                   {activeSessionForDisplay.status === 'active' ? 'ACTIVE' : 'WORKED'}
                 </span>
-                {activeSessionForDisplay.status === 'active' && missedCount > 0 && (
-                  <motion.span
-                    initial={{ scale: 0.8 }}
-                    animate={{ scale: [0.8, 1.1, 1] }}
-                    transition={{ repeat: Infinity, duration: 2 }}
-                    className="text-[10px] font-black text-red-500 bg-red-500/10 px-2 py-0.5 rounded-full border border-red-500/30 shadow-[0_0_10px_rgba(239,68,68,0.2)]"
-                  >
-                    {missedCount} MISSED
-                  </motion.span>
-                )}
+                {/* MISSED badges removed */}
               </div>
             )}
           </div>
@@ -666,7 +657,7 @@ function UserCard({ user, isExpanded, onToggle, onPhotoClick, targetDate }: {
             </div>
           ) : (
             <div className="text-right">
-              <p className="text-slate-600 text-[10px] font-bold uppercase tracking-widest">Inactive</p>
+              <p className="text-slate-600 text-[10px] font-bold uppercase tracking-widest">Absent</p>
             </div>
           )}
         </div>
