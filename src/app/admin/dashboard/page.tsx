@@ -200,30 +200,37 @@ export default function AdminDashboard() {
     const dataToExport: any[] = []
 
     displayedUsers.forEach(user => {
-      const latestSession = user.sessions[0]
+      // Find the relevant session based on tab
+      const session = activeTab === 'date'
+        ? user.sessions.find(s => format(new Date(s.start_time), 'yyyy-MM-dd') === selectedDate)
+        : user.sessions[0]
 
-      if (!latestSession) {
+      if (!session) {
         dataToExport.push({
-          'User ID': user.full_name,
+          'Worker ID': user.full_name,
           'Ondriyam': user.assigned_area || 'Unassigned',
-          'Status': 'No Sessions',
+          'Status': 'No Activity',
+          'Start Time': '-',
+          'End Time': '-',
           'Duration': '-',
           'Location': '-'
         })
       } else {
-        const start = new Date(latestSession.start_time)
-        const isOngoing = latestSession.status === 'active'
-        const end = isOngoing ? new Date() : (latestSession.end_time ? new Date(latestSession.end_time) : new Date())
+        const start = new Date(session.start_time)
+        const isOngoing = session.status === 'active'
+        const end = isOngoing ? new Date() : (session.end_time ? new Date(session.end_time) : new Date(session.start_time))
 
         const durationMin = differenceInMinutes(end, start)
         const durationStr = `${Math.floor(durationMin / 60)}h ${durationMin % 60}m`
 
         dataToExport.push({
-          'User ID': user.full_name,
+          'Worker ID': user.full_name,
           'Ondriyam': user.assigned_area || 'Unassigned',
-          'Status': latestSession.status.toUpperCase(),
+          'Status': session.status.toUpperCase(),
+          'Start Time': format(start, 'hh:mm a'),
+          'End Time': isOngoing ? 'Ongoing' : (session.end_time ? format(new Date(session.end_time), 'hh:mm a') : '-'),
           'Duration': durationStr,
-          'Location': latestSession.start_location ? `${latestSession.start_location.lat}, ${latestSession.start_location.lng}` : '-'
+          'Location': session.start_location ? `${session.start_location.lat}, ${session.start_location.lng}` : '-'
         })
       }
     })
@@ -232,7 +239,8 @@ export default function AdminDashboard() {
     const workbook = XLSX.utils.book_new()
     XLSX.utils.book_append_sheet(workbook, worksheet, "Session Report")
 
-    XLSX.writeFile(workbook, `TravelTrack_Report_${format(new Date(), 'yyyy-MM-dd')}.xlsx`)
+    const fileNameDate = activeTab === 'date' ? selectedDate : format(new Date(), 'yyyy-MM-dd')
+    XLSX.writeFile(workbook, `TravelTrack_Report_${fileNameDate}.xlsx`)
   }
 
   if (loading) {
