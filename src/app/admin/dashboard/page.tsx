@@ -15,6 +15,7 @@ import { motion, AnimatePresence, LayoutGroup } from 'framer-motion'
 import { createWorker, deleteWorker } from '@/app/actions/admin'
 import type { Profile, Session, PhotoCheckin } from '@/lib/types'
 import { formatDistanceToNow, format, differenceInMinutes } from 'date-fns'
+import { getAddressFromCoords } from '@/lib/utils/geocoding'
 
 interface UserWithSession extends Profile {
   sessions: Array<Session & { photo_checkins: PhotoCheckin[] }>
@@ -37,6 +38,7 @@ export default function AdminDashboard() {
   const [actionLoading, setActionLoading] = useState(false)
   const [actionError, setActionError] = useState('')
   const [actionSuccess, setActionSuccess] = useState('')
+  const [exportLoading, setExportLoading] = useState(false)
 
   // Handle history for photo modal (fix for swiping back on mobile)
   useEffect(() => {
@@ -196,10 +198,12 @@ export default function AdminDashboard() {
     setActionLoading(false)
   }
 
-  const handleExportExcel = () => {
+  const handleExportExcel = async () => {
+    setExportLoading(true)
     const dataToExport: any[] = []
 
-    displayedUsers.forEach(user => {
+    // Process sequentially to avoid Nominatim rate limiting (1 request/sec)
+    for (const user of displayedUsers) {
       // Find the relevant session based on tab
       const session = activeTab === 'date'
         ? user.sessions.find(s => format(new Date(s.start_time), 'yyyy-MM-dd') === selectedDate)
@@ -207,13 +211,17 @@ export default function AdminDashboard() {
 
       if (!session) {
         dataToExport.push({
-          'Worker ID': user.full_name,
+          'Worker Name': user.full_name,
           'Ondriyam': user.assigned_area || 'Unassigned',
           'Status': 'No Activity',
           'Start Time': '-',
           'End Time': '-',
           'Duration': '-',
-          'Location': '-'
+          'Start Coords': '-',
+          'Start Address': '-',
+          'End Coords': '-',
+          'End Address': '-',
+          'Photos Uploaded': 0
         })
       } else {
         const start = new Date(session.start_time)
@@ -223,17 +231,44 @@ export default function AdminDashboard() {
         const durationMin = differenceInMinutes(end, start)
         const durationStr = `${Math.floor(durationMin / 60)}h ${durationMin % 60}m`
 
+        // START LOCATION PROCESSING
+        let startAddress = '-'
+        if (session.start_location) {
+          startAddress = await getAddressFromCoords(session.start_location.lat, session.start_location.lng)
+          if (displayedUsers.length > 2) await new Promise(r => setTimeout(r, 800))
+        }
+
+        // END LOCATION PROCESSING
+        let endAddress = '-'
+        let endCoords = '-'
+        if (isOngoing) {
+          endCoords = 'In Progress'
+          endAddress = 'In Progress'
+        } else if (session.end_location) {
+          endCoords = `${session.end_location.lat}, ${session.end_location.lng}`
+          endAddress = await getAddressFromCoords(session.end_location.lat, session.end_location.lng)
+          if (displayedUsers.length > 2) await new Promise(r => setTimeout(r, 800))
+        } else {
+          // No end location captured (likely auto-logout)
+          endCoords = 'Unknown'
+          endAddress = 'Unknown'
+        }
+
         dataToExport.push({
-          'Worker ID': user.full_name,
+          'Worker Name': user.full_name,
           'Ondriyam': user.assigned_area || 'Unassigned',
           'Status': session.status.toUpperCase(),
           'Start Time': format(start, 'hh:mm a'),
           'End Time': isOngoing ? 'Ongoing' : (session.end_time ? format(new Date(session.end_time), 'hh:mm a') : '-'),
           'Duration': durationStr,
-          'Location': session.start_location ? `${session.start_location.lat}, ${session.start_location.lng}` : '-'
+          'Start Coords': session.start_location ? `${session.start_location.lat}, ${session.start_location.lng}` : '-',
+          'Start Address': startAddress,
+          'End Coords': endCoords,
+          'End Address': endAddress,
+          'Photos Uploaded': session.photo_checkins?.length || 0
         })
       }
-    })
+    }
 
     const worksheet = XLSX.utils.json_to_sheet(dataToExport)
     const workbook = XLSX.utils.book_new()
@@ -241,6 +276,7 @@ export default function AdminDashboard() {
 
     const fileNameDate = activeTab === 'date' ? selectedDate : format(new Date(), 'yyyy-MM-dd')
     XLSX.writeFile(workbook, `TravelTrack_Report_${fileNameDate}.xlsx`)
+    setExportLoading(false)
   }
 
   if (loading) {
@@ -272,11 +308,18 @@ export default function AdminDashboard() {
             <button
               id="export-excel-btn"
               onClick={handleExportExcel}
-              className="p-2.5 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 text-slate-300 transition-colors flex items-center gap-2 group"
+              disabled={exportLoading}
+              className="p-2.5 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 text-slate-300 transition-colors flex items-center gap-2 group disabled:opacity-50"
               title="Export to Excel"
             >
-              <FileSpreadsheet className="w-4 h-4 text-emerald-500" />
-              <span className="text-xs font-medium hidden md:inline">Export Excel</span>
+              {exportLoading ? (
+                <Loader2 className="w-4 h-4 text-orange-500 animate-spin" />
+              ) : (
+                <FileSpreadsheet className="w-4 h-4 text-emerald-500" />
+              )}
+              <span className="text-xs font-medium hidden md:inline">
+                {exportLoading ? 'Processing...' : 'Export Excel'}
+              </span>
             </button>
             <button
               id="refresh-btn"

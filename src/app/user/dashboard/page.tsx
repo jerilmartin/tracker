@@ -87,18 +87,18 @@ export default function UserDashboard() {
     if (checkinTimerRef.current) clearInterval(checkinTimerRef.current)
 
     const REMINDER_PERIOD = 60 * 60 * 1000 // 1 hour inactivity reminder
-    
+
     const updateTimers = () => {
       // Inactivity reminder logic
       if (lastCheckinAt) {
         const last = new Date(lastCheckinAt).getTime()
         const elapsed = Date.now() - last
-        
+
         // Reminder logic: If 60 mins passed since last checkin, and no modal open, remind them.
         if (elapsed >= REMINDER_PERIOD && elapsed < REMINDER_PERIOD + 2000) {
           setShowPhotoModal(true)
         }
-        
+
         // Next checkin countdown (for visual indicator only)
         const nextTarget = last + REMINDER_PERIOD
         setNextCheckinIn(Math.max(0, Math.floor((nextTarget - Date.now()) / 1000)))
@@ -171,7 +171,7 @@ export default function UserDashboard() {
 
     setSyncing(true)
     setQueuedCount(queued.length)
-    
+
     let successCount = 0
     for (const item of queued) {
       try {
@@ -204,7 +204,7 @@ export default function UserDashboard() {
         console.error('Failed to sync photo:', err)
       }
     }
-    
+
     if (successCount > 0) {
       setSuccess(`Successfully synced ${successCount} offline photos!`)
       setTimeout(() => setSuccess(''), 4000)
@@ -223,23 +223,87 @@ export default function UserDashboard() {
       setTimeout(syncQueuedPhotos, 2000)
     }
     const handleOffline = () => setIsOnline(false)
-    
+
     window.addEventListener('online', handleOnline)
     window.addEventListener('offline', handleOffline)
     setIsOnline(navigator.onLine)
-    
+
     // Check for queued items on mount and try to sync
     getQueuedPhotos().then(items => {
       setQueuedCount(items.length)
       if (items.length > 0 && navigator.onLine) syncQueuedPhotos()
     })
-    
+
     return () => {
       window.removeEventListener('online', handleOnline)
       window.removeEventListener('offline', handleOffline)
     }
   }, [syncQueuedPhotos])
 
+  const endSession = useCallback(async (isAuto = false) => {
+    if (!activeSession) return
+    if (!isAuto && !confirm('Are you sure you want to end this session?')) return
+
+    setActionLoading(true)
+    setError('')
+
+    try {
+      // 1. Capture final location (with fallback)
+      const location = isAuto ? null : await getLocation().catch(() => null)
+
+      // 2. Update session in Supabase
+      const { error: err } = await supabase
+        .from('sessions')
+        .update({
+          end_location: location,
+          end_time: new Date().toISOString(),
+          status: 'ended',
+        })
+        .eq('id', activeSession.id)
+
+      if (err) throw new Error(`Database Error: ${err.message}`)
+
+      // 3. Clear local state and refresh
+      setActiveSession(null)
+      const successMsg = isAuto
+        ? 'Session automatically ended at 11:00 PM IST.'
+        : 'Session ended. Great work today!'
+      setSuccess(successMsg)
+      setTimeout(() => setSuccess(''), 5000)
+
+      // Force reload to ensure history is updated
+      await loadData()
+
+    } catch (e: unknown) {
+      console.error('End session error:', e)
+      if (!isAuto) {
+        setError(e instanceof Error ? e.message : 'Failed to end session. Check connection.')
+      }
+    } finally {
+      setActionLoading(false)
+    }
+  }, [activeSession, supabase, loadData])
+
+  // Auto-end session at 11:00 PM IST
+  useEffect(() => {
+    if (!activeSession) return
+
+    const checkAutoEnd = () => {
+      const now = new Date()
+      // IST is UTC+5.5
+      const offset = now.getTimezoneOffset() // in minutes
+      const istTime = new Date(now.getTime() + (offset + 330) * 60000)
+
+      if (istTime.getHours() >= 23) {
+        endSession(true)
+      }
+    }
+
+    const timer = setInterval(checkAutoEnd, 60000) // Check every minute
+    checkAutoEnd() // Initial check
+
+    return () => clearInterval(timer)
+  }, [activeSession, endSession])
   const startSession = async () => {
     setActionLoading(true)
     setError('')
@@ -278,49 +342,10 @@ export default function UserDashboard() {
     return () => window.removeEventListener('popstate', handlePopState)
   }, [showPhotoModal])
 
-  const endSession = async () => {
-    if (!activeSession) return
-    if (!confirm('Are you sure you want to end this session?')) return
-    
-    setActionLoading(true)
-    setError('')
-    
-    try {
-      // 1. Capture final location (with fallback)
-      const location = await getLocation().catch(() => null)
-      
-      // 2. Update session in Supabase
-      const { error: err } = await supabase
-        .from('sessions')
-        .update({
-          end_location: location,
-          end_time: new Date().toISOString(),
-          status: 'ended',
-        })
-        .eq('id', activeSession.id)
-      
-      if (err) throw new Error(`Database Error: ${err.message}`)
-      
-      // 3. Clear local state and refresh
-      setActiveSession(null)
-      setSuccess('Session ended. Great work today!')
-      setTimeout(() => setSuccess(''), 3000)
-      
-      // Force reload to ensure history is updated
-      await loadData()
-      
-    } catch (e: unknown) {
-      console.error('End session error:', e)
-      setError(e instanceof Error ? e.message : 'Failed to end session. Check connection.')
-    } finally {
-      setActionLoading(false)
-    }
-  }
-
   const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file || !activeSession) return
-    
+
     setPhotoUploading(true)
     setError('')
     try {
@@ -328,7 +353,7 @@ export default function UserDashboard() {
       if (!user) return
 
       const fileName = `checkins/${user.id}/${activeSession.id}/${Date.now()}.jpg`
-      
+
       let location: GeoLocation | null = null
       try { location = await getLocation() } catch { /* optional */ }
 
@@ -477,7 +502,7 @@ export default function UserDashboard() {
           <div className="space-y-6">
             {!lastCheckinAt ? (
               /* Forced Initial Photo Prompt - INLINE */
-              <motion.div 
+              <motion.div
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 className="saas-card p-8 border-orange-500/30 bg-orange-500/[0.03] text-center"
@@ -515,7 +540,7 @@ export default function UserDashboard() {
                     <span className="text-green-400 text-xs font-semibold">Recording</span>
                   </div>
                 </div>
-                
+
                 <div className="text-center py-6">
                   <p className="text-xs text-slate-400 font-medium mb-2 uppercase tracking-wide">Elapsed Time</p>
                   <p className="text-5xl font-light text-white tracking-tight">{elapsedTime}</p>
@@ -542,7 +567,7 @@ export default function UserDashboard() {
                   </button>
                   <button
                     id="end-session-btn"
-                    onClick={endSession}
+                    onClick={() => endSession(false)}
                     disabled={actionLoading}
                     className="w-full bg-red-500/10 border border-red-500/20 text-red-500 hover:bg-red-500 hover:text-white py-3.5 rounded-xl flex items-center justify-center gap-2 text-sm font-semibold transition-all disabled:opacity-50"
                   >
