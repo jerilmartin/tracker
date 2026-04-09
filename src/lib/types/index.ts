@@ -5,6 +5,7 @@ export interface Profile {
   full_name: string
   role: UserRole
   assigned_area: string | null
+  team?: string | null
   phone: string | null
   created_at: string
 }

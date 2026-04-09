@@ -57,6 +57,8 @@ export default function AdminDashboard() {
   const [searchQuery, setSearchQuery] = useState('')
   const [areaFilter, setAreaFilter] = useState<string[]>([])
   const [isAreaDropdownOpen, setIsAreaDropdownOpen] = useState(false)
+  const [teamFilter, setTeamFilter] = useState<string[]>([])
+  const [isTeamDropdownOpen, setIsTeamDropdownOpen] = useState(false)
 
   const loadData = useCallback(async () => {
     const { data: { user } } = await supabase.auth.getUser()
@@ -139,6 +141,7 @@ export default function AdminDashboard() {
   const totalCheckins = users.reduce((acc, u) => acc + u.sessions.reduce((sAcc, s) => sAcc + s.photo_checkins.length, 0), 0)
 
   const uniqueAreas = Array.from(new Set(users.map(u => u.assigned_area).filter(Boolean))).sort() as string[]
+  const uniqueTeams = Array.from(new Set(users.map(u => u.team).filter(Boolean))).sort() as string[]
 
   const getTabUsers = () => {
     switch (activeTab) {
@@ -156,15 +159,11 @@ export default function AdminDashboard() {
   const tabUsers = getTabUsers()
 
   const displayedUsers = tabUsers.filter(user => {
-    const matchesSearch = user.full_name.toLowerCase().includes(searchQuery.toLowerCase())
+    const matchesSearch = user.full_name.toLowerCase().includes(searchQuery.toLowerCase()) || 
+                          (user.team && user.team.toLowerCase().includes(searchQuery.toLowerCase()))
     const matchesArea = areaFilter.length === 0 || (user.assigned_area && areaFilter.includes(user.assigned_area))
-
-    // In "date" mode, we might want to filter only those who worked? 
-    // Or users might want to see everyone to find the inactive ones.
-    // The user said "understand who and all were active on that day and who were inactive".
-    // So we show all, but maybe provide an internal toggle? 
-    // For now, show all filtered by search/area.
-    return matchesSearch && matchesArea
+    const matchesTeam = teamFilter.length === 0 || (user.team && teamFilter.includes(user.team))
+    return matchesSearch && matchesArea && matchesTeam
   })
 
   const handleCreateWorker = async (formData: FormData) => {
@@ -212,6 +211,7 @@ export default function AdminDashboard() {
       if (!session) {
         dataToExport.push({
           'Worker Name': user.full_name,
+          'Team': user.team || '-',
           'Ondriyam': user.assigned_area || 'Unassigned',
           'Status': 'No Activity',
           'Start Time': '-',
@@ -256,6 +256,7 @@ export default function AdminDashboard() {
 
         dataToExport.push({
           'Worker Name': user.full_name,
+          'Team': user.team || '-',
           'Ondriyam': user.assigned_area || 'Unassigned',
           'Status': session.status.toUpperCase(),
           'Start Time': format(start, 'hh:mm a'),
@@ -481,6 +482,66 @@ export default function AdminDashboard() {
                 </>
               )}
             </div>
+
+            <div className="relative min-w-[240px]">
+              <div
+                onClick={() => setIsTeamDropdownOpen(!isTeamDropdownOpen)}
+                className="w-full bg-[#0a0c10] border border-white/10 rounded-xl pl-10 pr-10 py-2.5 text-sm text-white cursor-pointer hover:border-white/20 transition-all flex items-center justify-between"
+              >
+                <div className="flex items-center gap-2 overflow-hidden">
+                  <Filter className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
+                  <span className="truncate">
+                    {teamFilter.length === 0
+                      ? 'All Teams'
+                      : `${teamFilter.length} Team${teamFilter.length > 1 ? 's' : ''} Selected`}
+                  </span>
+                </div>
+                <ChevronDown className={`w-4 h-4 text-slate-500 transition-transform ${isTeamDropdownOpen ? 'rotate-180' : ''}`} />
+              </div>
+
+              {isTeamDropdownOpen && (
+                <>
+                  <div
+                    className="fixed inset-0 z-30"
+                    onClick={() => setIsTeamDropdownOpen(false)}
+                  />
+                  <div className="absolute top-full left-0 right-0 mt-2 z-40 bg-[#0a0c10] border border-white/10 rounded-xl shadow-2xl max-h-[300px] overflow-y-auto p-2 scrollbar-thin scrollbar-thumb-white/10">
+                    <button
+                      onClick={() => {
+                        setTeamFilter([])
+                        setIsTeamDropdownOpen(false)
+                      }}
+                      className="w-full text-left px-3 py-2 text-xs font-bold text-orange-500 hover:bg-white/5 rounded-lg mb-1"
+                    >
+                      CLEAR ALL FILTERS
+                    </button>
+                    {uniqueTeams.map(team => (
+                      <label
+                        key={team}
+                        className="flex items-center gap-3 px-3 py-2 hover:bg-white/5 rounded-lg cursor-pointer transition-colors group"
+                      >
+                        <div className={`w-4 h-4 rounded border flex items-center justify-center transition-colors ${teamFilter.includes(team) ? 'bg-orange-500 border-orange-500' : 'border-white/20 group-hover:border-white/40'}`}>
+                          {teamFilter.includes(team) && <Check className="w-3 h-3 text-white" />}
+                        </div>
+                        <input
+                          type="checkbox"
+                          className="hidden"
+                          checked={teamFilter.includes(team)}
+                          onChange={() => {
+                            setTeamFilter(prev =>
+                              prev.includes(team)
+                                ? prev.filter(t => t !== team)
+                                : [...prev, team]
+                            )
+                          }}
+                        />
+                        <span className="text-sm text-slate-200 truncate">{team}</span>
+                      </label>
+                    ))}
+                  </div>
+                </>
+              )}
+            </div>
           </div>
         )}
 
@@ -553,7 +614,7 @@ export default function AdminDashboard() {
                           {u.full_name.substring(0, 1).toUpperCase()}
                         </div>
                         <div>
-                          <p className="text-sm font-bold text-white">{u.full_name}</p>
+                          <p className="text-sm font-bold text-white">{u.full_name}{u.team ? ` - ${u.team}` : ''}</p>
                           <p className="text-[10px] text-slate-400 font-medium uppercase tracking-wider">{u.assigned_area || 'Unassigned'}</p>
                         </div>
                       </div>
@@ -682,7 +743,9 @@ function UserCard({ user, isExpanded, onToggle, onPhotoClick, targetDate }: {
 
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-3">
-            <p className={`font-semibold text-base tracking-tight ${activeSessionForDisplay ? 'text-white' : 'text-slate-400'}`}>{user.full_name}</p>
+            <p className={`font-semibold text-base tracking-tight ${activeSessionForDisplay ? 'text-white' : 'text-slate-400'}`}>
+              {user.full_name}{user.team ? ` - ${user.team}` : ''}
+            </p>
             {activeSessionForDisplay && (
               <div className="flex items-center gap-2">
                 <span className={`text-[10px] font-bold ${activeSessionForDisplay.status === 'active' ? 'text-green-400 bg-green-500/10 border-green-500/20' : 'text-orange-400 bg-orange-500/10 border-orange-500/20'} px-2 py-0.5 rounded-full border uppercase tracking-wider`}>
